@@ -1,4 +1,3 @@
-from encodings.utf_8 import encode
 from typing import Any
 import requests
 import psycopg2
@@ -44,9 +43,9 @@ def create_database(database_name: str, params: dict):
         cur.execute("""
             CREATE TABLE employers (
                 employer_id SERIAL PRIMARY KEY,
-                company_name VARCHAR(64) NOT NULL,
+                company_name VARCHAR(500) NOT NULL,
                 open_vacancies INTEGER,
-                vacancies_url TEXT,
+                employer_url TEXT,
                 description TEXT)
         """)
 
@@ -55,7 +54,7 @@ def create_database(database_name: str, params: dict):
             CREATE TABLE vacancies (
                 vacancy_id SERIAL PRIMARY KEY,
                 employer_id INT REFERENCES employers(employer_id),
-                vacancy_name VARCHAR(64) NOT NULL,
+                vacancy_name VARCHAR(500) NOT NULL,
                 salary_from INTEGER,
                 vacancy_url TEXT)
         """)
@@ -75,25 +74,34 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
 
             cur.execute(
                 """
-                INSERT INTO employers (company_name, open_vacancies, vacancies_url, description)
+                INSERT INTO employers (company_name, open_vacancies, employer_url, description)
                 VALUES (%s, %s, %s, %s)
                 RETURNING employer_id
                 """,
-                (employer_data['name'], employer_data['open_vacancies'], employer_data['vacancies_url'],
+                (employer_data['name'], employer_data['open_vacancies'], employer_data['alternate_url'],
                  employer_data['description']))
 
             employer_id = cur.fetchone()[0]
 
             vacancies_data = text['vacancies']
             for vacancy in vacancies_data:
-                cur.execute(
-                    """
-                    INSERT INTO vacancies (employer_id, vacancy_name, salary_from, vacancy_url)
-                    VALUES (%s, %s, %s, %s)
-                    """,
-                    (employer_id, vacancy['name'], vacancy['salary']['from'],
-                     vacancy['alternate_url'])
-                )
+                if vacancy['salary'] is None:
+                    cur.execute(
+                        """
+                        INSERT INTO vacancies (employer_id, vacancy_name, salary_from, vacancy_url)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (employer_id, vacancy['name'], 0,
+                         vacancy['alternate_url'])
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO vacancies (employer_id, vacancy_name, salary_from, vacancy_url)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (employer_id, vacancy['name'], vacancy['salary']['from'],
+                         vacancy['alternate_url']))
 
     conn.commit()
     conn.close()

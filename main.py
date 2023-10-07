@@ -22,6 +22,14 @@ def main():
 
     create_database('hhru', params)
     save_data_to_database(data, 'hhru', params)
+    
+    m = DBManager(params)
+    
+    print(m.get_companies_and_vacancies_count())
+    print(m.get_all_vacancies())
+    print(m.get_avg_salary())
+    print(m.get_vacancies_with_higher_salary())
+    print(m.get_vacancies_with_keyword())
 
 
 if __name__ == '__main__':
